@@ -3,7 +3,8 @@ import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import jsx from "react-syntax-highlighter/dist/esm/languages/prism/jsx";
 import javascript from "react-syntax-highlighter/dist/esm/languages/prism/javascript";
 import glsl from "react-syntax-highlighter/dist/esm/languages/prism/glsl";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import vscDarkPlusModule from "react-syntax-highlighter/dist/esm/styles/prism/vsc-dark-plus";
+const vscDarkPlus = vscDarkPlusModule;
 
 // Register languages
 SyntaxHighlighter.registerLanguage("jsx", jsx);
