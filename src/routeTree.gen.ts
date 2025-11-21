@@ -36,9 +36,7 @@ import { Route as Lesson04TexturesRouteImport } from './routes/lesson.04-texture
 import { Route as Lesson03MaterialsRouteImport } from './routes/lesson.03-materials'
 import { Route as Lesson02GeometriesRouteImport } from './routes/lesson.02-geometries'
 import { Route as Lesson01BasicSceneRouteImport } from './routes/lesson.01-basic-scene'
-import { Route as ApiUsersRouteImport } from './routes/api/users'
 import { Route as PathlessLayoutNestedLayoutRouteImport } from './routes/_pathlessLayout/_nested-layout'
-import { Route as ApiUsersUserIdRouteImport } from './routes/api/users.$userId'
 import { Route as PathlessLayoutNestedLayoutRouteBRouteImport } from './routes/_pathlessLayout/_nested-layout/route-b'
 import { Route as PathlessLayoutNestedLayoutRouteARouteImport } from './routes/_pathlessLayout/_nested-layout/route-a'
 
@@ -178,21 +176,11 @@ const Lesson01BasicSceneRoute = Lesson01BasicSceneRouteImport.update({
   path: '/lesson/01-basic-scene',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiUsersRoute = ApiUsersRouteImport.update({
-  id: '/api/users',
-  path: '/api/users',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PathlessLayoutNestedLayoutRoute =
   PathlessLayoutNestedLayoutRouteImport.update({
     id: '/_nested-layout',
     getParentRoute: () => PathlessLayoutRoute,
   } as any)
-const ApiUsersUserIdRoute = ApiUsersUserIdRouteImport.update({
-  id: '/$userId',
-  path: '/$userId',
-  getParentRoute: () => ApiUsersRoute,
-} as any)
 const PathlessLayoutNestedLayoutRouteBRoute =
   PathlessLayoutNestedLayoutRouteBRouteImport.update({
     id: '/route-b',
@@ -211,7 +199,6 @@ export interface FileRoutesByFullPath {
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/deferred': typeof DeferredRoute
   '/redirect': typeof RedirectRoute
-  '/api/users': typeof ApiUsersRouteWithChildren
   '/lesson/01-basic-scene': typeof Lesson01BasicSceneRoute
   '/lesson/02-geometries': typeof Lesson02GeometriesRoute
   '/lesson/03-materials': typeof Lesson03MaterialsRoute
@@ -236,14 +223,12 @@ export interface FileRoutesByFullPath {
   '/theory/06-performance': typeof Theory06PerformanceRoute
   '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
   '/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
-  '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/customScript.js': typeof CustomScriptDotjsRoute
   '/deferred': typeof DeferredRoute
   '/redirect': typeof RedirectRoute
-  '/api/users': typeof ApiUsersRouteWithChildren
   '/lesson/01-basic-scene': typeof Lesson01BasicSceneRoute
   '/lesson/02-geometries': typeof Lesson02GeometriesRoute
   '/lesson/03-materials': typeof Lesson03MaterialsRoute
@@ -268,7 +253,6 @@ export interface FileRoutesByTo {
   '/theory/06-performance': typeof Theory06PerformanceRoute
   '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
   '/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
-  '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -278,7 +262,6 @@ export interface FileRoutesById {
   '/deferred': typeof DeferredRoute
   '/redirect': typeof RedirectRoute
   '/_pathlessLayout/_nested-layout': typeof PathlessLayoutNestedLayoutRouteWithChildren
-  '/api/users': typeof ApiUsersRouteWithChildren
   '/lesson/01-basic-scene': typeof Lesson01BasicSceneRoute
   '/lesson/02-geometries': typeof Lesson02GeometriesRoute
   '/lesson/03-materials': typeof Lesson03MaterialsRoute
@@ -303,7 +286,6 @@ export interface FileRoutesById {
   '/theory/06-performance': typeof Theory06PerformanceRoute
   '/_pathlessLayout/_nested-layout/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
   '/_pathlessLayout/_nested-layout/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
-  '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -312,7 +294,6 @@ export interface FileRouteTypes {
     | '/customScript.js'
     | '/deferred'
     | '/redirect'
-    | '/api/users'
     | '/lesson/01-basic-scene'
     | '/lesson/02-geometries'
     | '/lesson/03-materials'
@@ -337,14 +318,12 @@ export interface FileRouteTypes {
     | '/theory/06-performance'
     | '/route-a'
     | '/route-b'
-    | '/api/users/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/customScript.js'
     | '/deferred'
     | '/redirect'
-    | '/api/users'
     | '/lesson/01-basic-scene'
     | '/lesson/02-geometries'
     | '/lesson/03-materials'
@@ -369,7 +348,6 @@ export interface FileRouteTypes {
     | '/theory/06-performance'
     | '/route-a'
     | '/route-b'
-    | '/api/users/$userId'
   id:
     | '__root__'
     | '/'
@@ -378,7 +356,6 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/redirect'
     | '/_pathlessLayout/_nested-layout'
-    | '/api/users'
     | '/lesson/01-basic-scene'
     | '/lesson/02-geometries'
     | '/lesson/03-materials'
@@ -403,7 +380,6 @@ export interface FileRouteTypes {
     | '/theory/06-performance'
     | '/_pathlessLayout/_nested-layout/route-a'
     | '/_pathlessLayout/_nested-layout/route-b'
-    | '/api/users/$userId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -412,7 +388,6 @@ export interface RootRouteChildren {
   CustomScriptDotjsRoute: typeof CustomScriptDotjsRoute
   DeferredRoute: typeof DeferredRoute
   RedirectRoute: typeof RedirectRoute
-  ApiUsersRoute: typeof ApiUsersRouteWithChildren
   Lesson01BasicSceneRoute: typeof Lesson01BasicSceneRoute
   Lesson02GeometriesRoute: typeof Lesson02GeometriesRoute
   Lesson03MaterialsRoute: typeof Lesson03MaterialsRoute
@@ -628,26 +603,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Lesson01BasicSceneRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/users': {
-      id: '/api/users'
-      path: '/api/users'
-      fullPath: '/api/users'
-      preLoaderRoute: typeof ApiUsersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_pathlessLayout/_nested-layout': {
       id: '/_pathlessLayout/_nested-layout'
       path: ''
       fullPath: ''
       preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteImport
       parentRoute: typeof PathlessLayoutRoute
-    }
-    '/api/users/$userId': {
-      id: '/api/users/$userId'
-      path: '/$userId'
-      fullPath: '/api/users/$userId'
-      preLoaderRoute: typeof ApiUsersUserIdRouteImport
-      parentRoute: typeof ApiUsersRoute
     }
     '/_pathlessLayout/_nested-layout/route-b': {
       id: '/_pathlessLayout/_nested-layout/route-b'
@@ -696,25 +657,12 @@ const PathlessLayoutRouteWithChildren = PathlessLayoutRoute._addFileChildren(
   PathlessLayoutRouteChildren,
 )
 
-interface ApiUsersRouteChildren {
-  ApiUsersUserIdRoute: typeof ApiUsersUserIdRoute
-}
-
-const ApiUsersRouteChildren: ApiUsersRouteChildren = {
-  ApiUsersUserIdRoute: ApiUsersUserIdRoute,
-}
-
-const ApiUsersRouteWithChildren = ApiUsersRoute._addFileChildren(
-  ApiUsersRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PathlessLayoutRoute: PathlessLayoutRouteWithChildren,
   CustomScriptDotjsRoute: CustomScriptDotjsRoute,
   DeferredRoute: DeferredRoute,
   RedirectRoute: RedirectRoute,
-  ApiUsersRoute: ApiUsersRouteWithChildren,
   Lesson01BasicSceneRoute: Lesson01BasicSceneRoute,
   Lesson02GeometriesRoute: Lesson02GeometriesRoute,
   Lesson03MaterialsRoute: Lesson03MaterialsRoute,
