@@ -1,15 +1,5 @@
 import * as React from "react";
-import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
-import jsx from "react-syntax-highlighter/dist/esm/languages/prism/jsx";
-import javascript from "react-syntax-highlighter/dist/esm/languages/prism/javascript";
-import glsl from "react-syntax-highlighter/dist/esm/languages/prism/glsl";
-import vscDarkPlusModule from "react-syntax-highlighter/dist/esm/styles/prism/vsc-dark-plus";
-const vscDarkPlus = vscDarkPlusModule;
-
-// Register languages
-SyntaxHighlighter.registerLanguage("jsx", jsx);
-SyntaxHighlighter.registerLanguage("javascript", javascript);
-SyntaxHighlighter.registerLanguage("glsl", glsl);
+import { Highlight, themes } from "prism-react-renderer";
 
 interface CodeBlockProps {
   code: string;
@@ -78,19 +68,40 @@ export function CodeBlock({
             </svg>
           )}
         </button>
-        <SyntaxHighlighter
-          language={language}
-          style={vscDarkPlus}
-          customStyle={{
-            margin: 0,
-            padding: "1rem",
-            background: "transparent",
-          }}
-          showLineNumbers={true}
-          wrapLines={true}
-        >
-          {code.trim()}
-        </SyntaxHighlighter>
+        <Highlight theme={themes.vsDark} code={code.trim()} language={language}>
+          {({ className, style, tokens, getLineProps, getTokenProps }) => (
+            <pre
+              className={className}
+              style={{
+                ...style,
+                margin: 0,
+                padding: "1rem",
+                background: "transparent",
+                overflow: "auto",
+              }}
+            >
+              {tokens.map((line, i) => (
+                <div key={i} {...getLineProps({ line })}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: "2em",
+                      userSelect: "none",
+                      opacity: 0.5,
+                      marginRight: "1em",
+                      textAlign: "right",
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                  {line.map((token, key) => (
+                    <span key={key} {...getTokenProps({ token })} />
+                  ))}
+                </div>
+              ))}
+            </pre>
+          )}
+        </Highlight>
       </div>
     </div>
   );
