@@ -1,154 +1,123 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { TheoryLayout } from '~/components/TheoryLayout'
-import { CodeBlock } from '~/components/CodeBlock'
+import { createFileRoute } from "@tanstack/react-router";
+import { TheoryLayout } from "~/components/TheoryLayout";
+import { CodeBlock } from "~/components/CodeBlock";
 
-export const Route = createFileRoute('/theory/05-r3f-internals')({
+export const Route = createFileRoute("/theory/05-r3f-internals")({
   component: R3FInternalsTheory,
-})
+});
 
 function R3FInternalsTheory() {
   return (
     <TheoryLayout
-      title="05. R3F 내부 구조 (R3F Internals)"
+      title="05. R3F 리컨실러와 생명주기 (Reconciler Internals)"
       prevLink="/theory/04-materials-shaders"
       nextLink="/theory/06-performance"
     >
       <p>
-        React Three Fiber (R3F)는 단순한 React 래퍼(Wrapper)가 아닙니다. 
-        React의 <strong>Reconciler(재조정자)</strong>를 사용하여 Three.js를 React의 렌더링 시스템에 직접 연결한 것입니다.
+        React Three Fiber(R3F)는 <code>react-reconciler</code> 패키지를 사용하여
+        만든 커스텀 렌더러입니다. React DOM이 가상 DOM을 실제 DOM으로 바꾸듯,
+        R3F는 가상 씬 그래프를 실제 Three.js 객체로 바꿉니다.
       </p>
 
-      <h2>리액트와 Three.js의 만남</h2>
+      <h2>1. JSX가 Three.js 객체가 되는 과정</h2>
       <p>
-        React Three Fiber(R3F)는 단순한 React 래퍼가 아닙니다. 
-        Three.js의 복잡한 명령형(Imperative) API를 React의 선언형(Declarative) API로 변환해주는 <strong>Reconciler(재조정자)</strong>입니다.
+        우리가 <code>&lt;mesh /&gt;</code>라고 적으면 내부적으로 어떤 일이
+        일어날까요?
       </p>
-
-      <h2>[Expert] 이벤트 시스템 (Event System)</h2>
-      <p>
-        R3F는 DOM 이벤트와 유사한 이벤트 시스템을 3D 공간에 구현했습니다.
-        이것은 내부적으로 <strong>Raycasting(광선 투사)</strong> 알고리즘을 사용합니다.
-      </p>
-
       <ol>
-        <li>마우스를 클릭하면 화면 좌표(x, y)를 구합니다.</li>
-        <li>카메라에서 그 좌표 방향으로 보이지 않는 광선(Ray)을 쏩니다.</li>
-        <li>광선에 부딪힌 물체들을 거리순으로 정렬합니다.</li>
-        <li>가장 앞에 있는 물체의 <code>onClick</code> 핸들러를 실행합니다.</li>
-        <li><code>event.stopPropagation()</code>이 없으면 뒤에 있는 물체로 이벤트가 전파됩니다(Bubbling).</li>
+        <li>
+          <strong>CreateInstance</strong>: 태그 이름(<code>mesh</code>)을 보고{" "}
+          <code>THREE.Mesh</code> 클래스를 찾아서 <code>new Mesh()</code>를
+          호출합니다.
+        </li>
+        <li>
+          <strong>ApplyProps</strong>: JSX에 전달된 props(<code>position</code>,{" "}
+          <code>rotation</code> 등)를 Three.js 객체의 속성에 대입합니다.
+        </li>
+        <li>
+          <strong>AppendInitialChild</strong>: 부모 객체(<code>scene</code> 또는
+          다른 <code>group</code>)의 <code>add()</code> 메서드를 호출하여
+          자식으로 붙입니다.
+        </li>
       </ol>
 
       <CodeBlock
-        fileName="event_bubbling.jsx"
-        code={`<mesh
-  onClick={(e) => {
-    e.stopPropagation(); // 뒤에 있는 물체는 클릭되지 않음
-    console.log('앞에 있는 물체 클릭됨');
-    console.log('클릭 지점:', e.point); // 3D 월드 좌표
-    console.log('거리:', e.distance);   // 카메라로부터의 거리
-  }}
->
-  <boxGeometry />
-  <meshStandardMaterial color="red" />
-</mesh>`}
-      />
-
-      <h2>[Expert] Context Bridge (컨텍스트 브릿지)</h2>
-      <p>
-        <code>&lt;Canvas&gt;</code>는 새로운 React Root를 생성합니다. 
-        즉, <code>Canvas</code> 밖의 Context(Redux, Router, Theme 등)는 <code>Canvas</code> 안으로 전달되지 않습니다.
-        이를 해결하기 위해 <strong>Context Bridge</strong> 패턴을 사용해야 합니다.
-      </p>
-
-      <CodeBlock
-        fileName="ContextBridge.jsx"
-        code={`function App() {
-  // 1. Canvas 밖에서 Context를 사용
-  const theme = useContext(ThemeContext);
-
-  return (
-    <Canvas>
-      {/* 2. Canvas 안으로 값을 직접 넘겨주거나, 별도의 Provider를 다시 감싸야 함 */}
-      <ThemeContext.Provider value={theme}>
-        <Scene />
-      </ThemeContext.Provider>
-    </Canvas>
-  )
-}
-
-// 또는 drei 라이브러리의 useContextBridge 사용
-import { useContextBridge } from '@react-three/drei'
-
-function App() {
-  const ContextBridge = useContextBridge(ThemeContext, AuthContext)
-  return (
-    <Canvas>
-      <ContextBridge>
-        <Scene />
-      </ContextBridge>
-    </Canvas>
-  )
-}`}
-      />
-
-      <h2>useFrame의 올바른 사용법</h2>
-      <p>
-        <code>useFrame</code>은 매 프레임(초당 60~144회)마다 실행됩니다.
-        여기서 <code>setState</code>를 호출하면 리액트가 매번 리렌더링을 시도하여 성능이 폭락합니다.
-      </p>
-
-      <h3>❌ 나쁜 예 (React State 사용)</h3>
-      <CodeBlock
-        fileName="BadAnimation.jsx"
-        code={`function BadBox() {
-  const [x, setX] = useState(0);
+        fileName="reconciler_logic.js"
+        code={`// R3F 내부 로직 (개념적)
+function createInstance(type, props, rootContainerInstance, hostContext) {
+  // 1. 태그 이름으로 클래스 찾기 (catalogue)
+  const TargetClass = catalogue[type]; // 'mesh' -> THREE.Mesh
   
-  useFrame(() => {
-    setX(x + 0.01); // 매 프레임 리렌더링 발생! (절대 금지)
-  });
-
-  return <mesh position-x={x}><boxGeometry /></mesh>;
-}`}
-      />
-
-      <h3>✅ 좋은 예 (Ref 직접 수정)</h3>
-      <CodeBlock
-        fileName="GoodAnimation.jsx"
-        code={`function GoodBox() {
-  const meshRef = useRef();
+  // 2. 인스턴스 생성 (args prop이 생성자 인자로 들어감)
+  const instance = new TargetClass(...props.args);
   
-  useFrame((state, delta) => {
-    // 리액트 렌더링을 건너뛰고 Three.js 객체를 직접 수정
-    meshRef.current.position.x += delta;
-  });
-
-  return <mesh ref={meshRef}><boxGeometry /></mesh>;
+  // 3. 속성 적용
+  applyProps(instance, props);
+  
+  return instance;
 }`}
       />
 
-      <h2>extend 함수</h2>
+      <h2>2. attach 속성의 비밀</h2>
       <p>
-        Three.js의 모든 클래스를 R3F 컴포넌트로 만들 수 있습니다.
-        <code>extend</code>를 사용하면 <code>new ClassName()</code>을 <code>&lt;className /&gt;</code>으로 변환해줍니다.
+        Three.js 객체들은 서로 다른 방식으로 연결됩니다. 대부분은{" "}
+        <code>add()</code>로 부모-자식 관계가 되지만, 재질(Material)이나
+        기하학(Geometry)은 <code>mesh.material = ...</code> 처럼 속성으로
+        할당되어야 합니다.
+      </p>
+      <p>
+        R3F는 이를 <strong>attach</strong> 속성으로 해결합니다.
       </p>
 
       <CodeBlock
-        fileName="extend_usage.jsx"
-        code={`import { extend } from '@react-three/fiber'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+        fileName="attach_logic.js"
+        code={`// JSX
+<mesh>
+  <boxGeometry attach="geometry" />
+  <meshStandardMaterial attach="material" />
+</mesh>
 
-// 1. Three.js 클래스 등록
-extend({ OrbitControls })
+// 내부 동작
+const mesh = new THREE.Mesh();
+const geometry = new THREE.BoxGeometry();
+const material = new THREE.MeshStandardMaterial();
 
-// 2. 컴포넌트로 사용 (camelCase로 자동 변환됨)
-function Scene() {
-  return (
-    <>
-      <orbitControls args={[camera, gl.domElement]} />
-    </>
-  )
-}`}
+// attach="geometry"를 보고 자동으로 할당
+mesh.geometry = geometry;
+mesh.material = material;`}
       />
+
+      <h2>3. 인스턴스 생명주기 (Lifecycle)</h2>
+      <p>
+        React 컴포넌트가 언마운트(Unmount)될 때, R3F는 자동으로 Three.js 객체의{" "}
+        <code>dispose()</code>를 호출하여 메모리를 정리해줍니다. 하지만 모든
+        객체가 자동으로 정리되는 것은 아닙니다.
+      </p>
+      <ul>
+        <li>
+          <strong>Geometry, Material</strong>: 자동으로 <code>dispose()</code>{" "}
+          호출됨.
+        </li>
+        <li>
+          <strong>Texture</strong>: 자동으로 <code>dispose()</code> 호출되지
+          않음! (직접 관리하거나 <code>useTexture</code> 훅 사용 권장)
+        </li>
+        <li>
+          <strong>Mesh, Group</strong>: <code>removeFromParent()</code>만
+          호출됨.
+        </li>
+      </ul>
+
+      <h2>4. Fiber Loop (Render Loop)</h2>
+      <p>
+        R3F는 자체적인 렌더 루프를 관리합니다.
+        <code>Canvas</code> 컴포넌트가 마운트되면 <code>ResizeObserver</code>로
+        크기를 감지하고, <code>requestAnimationFrame</code>을 시작합니다.
+      </p>
+      <p>
+        이 루프 안에서 <code>useFrame</code>에 등록된 콜백들이 순서대로
+        실행되고, 마지막으로 <code>gl.render()</code>가 호출됩니다.
+      </p>
     </TheoryLayout>
-  )
+  );
 }

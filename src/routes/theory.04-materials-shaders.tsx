@@ -1,164 +1,111 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { TheoryLayout } from '~/components/TheoryLayout'
-import { CodeBlock } from '~/components/CodeBlock'
+import { createFileRoute } from "@tanstack/react-router";
+import { TheoryLayout } from "~/components/TheoryLayout";
+import { CodeBlock } from "~/components/CodeBlock";
 
-export const Route = createFileRoute('/theory/04-materials-shaders')({
+export const Route = createFileRoute("/theory/04-materials-shaders")({
   component: MaterialsShadersTheory,
-})
+});
 
 function MaterialsShadersTheory() {
   return (
     <TheoryLayout
-      title="04. 재질과 쉐이더 (Materials & Shaders)"
+      title="04. 쉐이더 청크와 프로그램 캐시 (Shader Internals)"
       prevLink="/theory/03-buffer-geometry"
       nextLink="/theory/05-r3f-internals"
     >
       <p>
-        재질(Material)은 물체가 빛에 어떻게 반응하는지를 정의합니다.
-        하지만 그 내부를 들여다보면 결국 <strong>쉐이더(Shader)</strong>라는 작은 프로그램이 돌고 있습니다.
+        Three.js의 가장 큰 마법 중 하나는 수천 줄의 GLSL 코드를 자동으로
+        생성해준다는 것입니다. 이 마법의 핵심에는 <strong>ShaderChunk</strong>와{" "}
+        <strong>ProgramCache</strong>가 있습니다.
       </p>
 
-      <h2>[Expert] 조명 모델 (Lighting Models)</h2>
+      <h2>1. ShaderChunk 시스템</h2>
       <p>
-        컴퓨터 그래픽스 역사에는 다양한 조명 계산 방식이 존재했습니다.
+        Three.js는 거대한 GLSL 문자열을 조각조각 잘라서 관리합니다. 이를{" "}
+        <strong>ShaderChunk</strong>라고 합니다.
+        <code>MeshStandardMaterial</code> 같은 내장 재질들은 이 청크들을 레고
+        블록처럼 조립해서 만들어집니다.
       </p>
-
-      <ul>
-        <li><strong>Lambert</strong>: <code>MeshLambertMaterial</code>. 가장 단순함. 표면의 각도(Normal)와 빛의 각도(Light)만 고려. 반짝임(Specular) 없음.</li>
-        <li><strong>Phong / Blinn-Phong</strong>: <code>MeshPhongMaterial</code>. 반짝임(Specular)을 계산하여 플라스틱 같은 느낌을 냄.</li>
-        <li><strong>PBR (Physically Based Rendering)</strong>: <code>MeshStandardMaterial</code>. 물리 법칙에 기반하여 현실적인 재질 표현. 금속성(Metalness)과 거칠기(Roughness) 사용.</li>
-      </ul>
-
-      <CodeBlock
-        fileName="lighting_model_comparison.js"
-        code={`// 1. Lambert (무광, 빠름)
-const lambert = new THREE.MeshLambertMaterial({ color: 'red' });
-
-// 2. Phong (유광, 반짝임 조절 가능)
-const phong = new THREE.MeshPhongMaterial({ 
-  color: 'red',
-  specular: 0x111111, // 반사광 색상
-  shininess: 30       // 반짝임 정도
-});
-
-// 3. Standard (PBR, 현실적)
-const standard = new THREE.MeshStandardMaterial({
-  color: 'red',
-  metalness: 0.5, // 0: 비금속, 1: 금속
-  roughness: 0.2  // 0: 매끈함, 1: 거침
-});`}
-      />
-
-      <h2>[Expert] 텍스처 필터링 (Texture Filtering)</h2>
       <p>
-        작은 이미지를 크게 늘리거나, 큰 이미지를 작게 줄여서 보여줄 때 픽셀을 어떻게 처리할지 결정하는 기술입니다.
-      </p>
-
-      <ul>
-        <li><strong>NearestFilter</strong>: 가장 가까운 픽셀을 선택. 픽셀 아트나 마인크래프트 스타일에 적합. (계단 현상 발생)</li>
-        <li><strong>LinearFilter</strong>: 주변 픽셀을 부드럽게 섞음. (흐릿해짐)</li>
-        <li><strong>Mipmap</strong>: 멀리 있는 물체는 미리 작게 줄여놓은 이미지(Mipmap)를 사용하여 성능과 퀄리티를 모두 잡음.</li>
-      </ul>
-
-      <CodeBlock
-        fileName="texture_filtering.js"
-        code={`const texture = new THREE.TextureLoader().load('pixel_art.png');
-
-// 픽셀 아트 느낌을 살리려면:
-texture.magFilter = THREE.NearestFilter;
-texture.minFilter = THREE.NearestFilter;
-
-// 일반적인 부드러운 텍스처라면:
-texture.magFilter = THREE.LinearFilter;
-texture.minFilter = THREE.LinearMipMapLinearFilter; // 기본값`}
-      />
-
-      <h2>GLSL 쉐이더 기초</h2>
-      <p>
-        Three.js의 모든 재질은 결국 GLSL(OpenGL Shading Language) 코드로 변환됩니다.
-        우리가 직접 <code>ShaderMaterial</code>을 쓰면 이 코드를 직접 작성할 수 있습니다.
-      </p>
-
-      <h3>Vertex Shader (정점 쉐이더)</h3>
-      <p>
-        점의 위치를 결정합니다. "이 점을 화면 어디에 찍을까?"를 고민합니다.
-      </p>
-      <CodeBlock
-        fileName="vertexShader.glsl"
-        code={`void main() {
-  // projectionMatrix: 3D -> 2D 화면 변환
-  // modelViewMatrix: 월드 좌표 -> 카메라 앞 좌표 변환
-  // position: 내 점의 원래 위치
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}`}
-      />
-
-      <h3>Fragment Shader (프래그먼트 쉐이더)</h3>
-      <p>
-        픽셀의 색상을 결정합니다. "이 픽셀을 무슨 색으로 칠할까?"를 고민합니다.
-      </p>
-      <CodeBlock
-        fileName="fragmentShader.glsl"
-        code={`uniform vec3 uColor; // CPU에서 보내준 색상
-
-void main() {
-  gl_FragColor = vec4(uColor, 1.0); // R, G, B, A
-}`}
-      />
-
-      <h2>R3F에서 쉐이더 사용하기</h2>
-      <p>
-        <code>shaderMaterial</code>을 <code>extend</code>하여 JSX에서 태그처럼 사용할 수 있습니다.
+        우리가 <code>onBeforeCompile</code>을 사용하면 이 조립 과정에 개입하여
+        원하는 코드를 끼워 넣을 수 있습니다.
       </p>
 
       <CodeBlock
-        fileName="MyShaderMaterial.jsx"
-        code={`import { shaderMaterial } from '@react-three/drei'
-import { extend, useFrame } from '@react-three/fiber'
+        fileName="onBeforeCompile.js"
+        code={`const material = new THREE.MeshStandardMaterial({ color: 'blue' });
 
-// 1. 쉐이더 재질 정의
-const MyMaterial = shaderMaterial(
-  { uTime: 0, uColor: new THREE.Color(0.2, 0.0, 0.1) }, // Uniforms (변수들)
-  // Vertex Shader
-  \`
-    varying vec2 vUv;
-    void main() {
-      vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  \`,
-  // Fragment Shader
-  \`
-    uniform float uTime;
-    uniform vec3 uColor;
-    varying vec2 vUv;
-    void main() {
-      gl_FragColor = vec4(0.5 + 0.3 * sin(vUv.y * 20.0 + uTime), 0.0, 1.0, 1.0);
-    }
-  \`
-)
-
-// 2. R3F에 등록
-extend({ MyMaterial })
-
-// 3. 컴포넌트에서 사용
-function Scene() {
-  const materialRef = useRef()
+material.onBeforeCompile = (shader) => {
+  // shader.vertexShader와 shader.fragmentShader에는 
+  // 이미 조립된 GLSL 코드가 들어있습니다.
   
-  useFrame((state, delta) => {
-    // 시간 값을 계속 업데이트해서 애니메이션 효과
-    materialRef.current.uTime += delta
-  })
-
-  return (
-    <mesh>
-      <planeGeometry />
-      {/* <myMaterial> 태그로 사용 가능 (소문자로 시작) */}
-      <myMaterial ref={materialRef} />
-    </mesh>
-  )
-}`}
+  // 기존 코드를 찾아서 내가 원하는 코드로 바꿔치기(Injection)
+  shader.vertexShader = shader.vertexShader.replace(
+    '#include <begin_vertex>', // Three.js의 내장 청크
+    \`
+    #include <begin_vertex>
+    // 내 커스텀 로직 추가: y좌표를 사인파로 흔들기
+    transformed.y += sin(position.x * 10.0) * 0.5;
+    \`
+  );
+  
+  // Uniform 변수 추가
+  shader.uniforms.uTime = { value: 0 };
+};`}
       />
+
+      <h2>2. WebGLProgram과 Program Cache</h2>
+      <p>
+        GLSL 코드를 컴파일하고 링크하여 GPU에서 실행 가능한 상태로 만든 것을{" "}
+        <strong>WebGLProgram</strong>이라고 합니다. 이 과정은 매우 비싼
+        연산(수십~수백 ms 소요)입니다. 따라서 Three.js는 한 번 만든 프로그램을
+        절대 버리지 않고 캐싱합니다.
+      </p>
+
+      <h3>캐시 키(Cache Key) 생성 원리</h3>
+      <p>
+        Three.js는 재질의 속성들을 조합하여 긴 문자열(Hash)을 만듭니다. 예를
+        들어, 조명이 있는지, 안개가 있는지, 텍스처가 있는지 등을 확인합니다.
+      </p>
+      <CodeBlock
+        fileName="ProgramCache.js"
+        code={`// 개념적인 캐시 키 생성 로직
+const cacheKey = [
+  material.type,
+  scene.fog ? 'fog' : 'no-fog',
+  renderer.outputEncoding,
+  material.map ? 'map' : 'no-map',
+  // ... 수십 가지 속성
+].join('_');
+
+// 이미 이 키로 컴파일된 프로그램이 있다면 재사용!
+const program = programCache.get(cacheKey);`}
+      />
+
+      <p>
+        <strong>주의:</strong> 재질의 속성을 런타임에 바꾸면(예:{" "}
+        <code>material.map = texture</code> 추가), 캐시 키가 달라져서{" "}
+        <strong>재컴파일(Recompile)</strong>이 발생할 수 있습니다. 이는 순간적인
+        프레임 드랍(Stuttering)의 주원인이 됩니다.
+      </p>
+
+      <h2>3. Uniforms vs Defines</h2>
+      <p>쉐이더에 데이터를 넘기는 방법은 두 가지가 있습니다.</p>
+      <ul>
+        <li>
+          <strong>Uniform</strong>: 런타임에 값을 바꿀 수 있음. (예: 시간,
+          마우스 위치)
+        </li>
+        <li>
+          <strong>Define</strong>: <code>#define PI 3.14</code>처럼 컴파일
+          타임에 상수로 박제됨. 값을 바꾸면 재컴파일 필요.
+        </li>
+      </ul>
+      <p>
+        Three.js는 성능을 위해 가능한 많은 것을 Define으로 처리하려고 합니다.
+        예를 들어 조명의 개수는 Define으로 박혀있습니다. 따라서 조명을 하나 더
+        추가하면 쉐이더를 다시 컴파일해야 합니다.
+      </p>
     </TheoryLayout>
-  )
+  );
 }

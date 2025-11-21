@@ -19,7 +19,6 @@ import { Route as Theory05R3fInternalsRouteImport } from './routes/theory.05-r3f
 import { Route as Theory04MaterialsShadersRouteImport } from './routes/theory.04-materials-shaders'
 import { Route as Theory03BufferGeometryRouteImport } from './routes/theory.03-buffer-geometry'
 import { Route as Theory02SceneGraphRouteImport } from './routes/theory.02-scene-graph'
-import { Route as Theory02CoreConceptsRouteImport } from './routes/theory.02-core-concepts'
 import { Route as Theory01WebglFundamentalsRouteImport } from './routes/theory.01-webgl-fundamentals'
 import { Route as Theory01IntroRouteImport } from './routes/theory.01-intro'
 import { Route as Lesson15PostProcessingRouteImport } from './routes/lesson.15-post-processing'
@@ -91,11 +90,6 @@ const Theory03BufferGeometryRoute = Theory03BufferGeometryRouteImport.update({
 const Theory02SceneGraphRoute = Theory02SceneGraphRouteImport.update({
   id: '/theory/02-scene-graph',
   path: '/theory/02-scene-graph',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Theory02CoreConceptsRoute = Theory02CoreConceptsRouteImport.update({
-  id: '/theory/02-core-concepts',
-  path: '/theory/02-core-concepts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Theory01WebglFundamentalsRoute =
@@ -235,7 +229,6 @@ export interface FileRoutesByFullPath {
   '/lesson/15-post-processing': typeof Lesson15PostProcessingRoute
   '/theory/01-intro': typeof Theory01IntroRoute
   '/theory/01-webgl-fundamentals': typeof Theory01WebglFundamentalsRoute
-  '/theory/02-core-concepts': typeof Theory02CoreConceptsRoute
   '/theory/02-scene-graph': typeof Theory02SceneGraphRoute
   '/theory/03-buffer-geometry': typeof Theory03BufferGeometryRoute
   '/theory/04-materials-shaders': typeof Theory04MaterialsShadersRoute
@@ -268,7 +261,6 @@ export interface FileRoutesByTo {
   '/lesson/15-post-processing': typeof Lesson15PostProcessingRoute
   '/theory/01-intro': typeof Theory01IntroRoute
   '/theory/01-webgl-fundamentals': typeof Theory01WebglFundamentalsRoute
-  '/theory/02-core-concepts': typeof Theory02CoreConceptsRoute
   '/theory/02-scene-graph': typeof Theory02SceneGraphRoute
   '/theory/03-buffer-geometry': typeof Theory03BufferGeometryRoute
   '/theory/04-materials-shaders': typeof Theory04MaterialsShadersRoute
@@ -304,7 +296,6 @@ export interface FileRoutesById {
   '/lesson/15-post-processing': typeof Lesson15PostProcessingRoute
   '/theory/01-intro': typeof Theory01IntroRoute
   '/theory/01-webgl-fundamentals': typeof Theory01WebglFundamentalsRoute
-  '/theory/02-core-concepts': typeof Theory02CoreConceptsRoute
   '/theory/02-scene-graph': typeof Theory02SceneGraphRoute
   '/theory/03-buffer-geometry': typeof Theory03BufferGeometryRoute
   '/theory/04-materials-shaders': typeof Theory04MaterialsShadersRoute
@@ -339,7 +330,6 @@ export interface FileRouteTypes {
     | '/lesson/15-post-processing'
     | '/theory/01-intro'
     | '/theory/01-webgl-fundamentals'
-    | '/theory/02-core-concepts'
     | '/theory/02-scene-graph'
     | '/theory/03-buffer-geometry'
     | '/theory/04-materials-shaders'
@@ -372,7 +362,6 @@ export interface FileRouteTypes {
     | '/lesson/15-post-processing'
     | '/theory/01-intro'
     | '/theory/01-webgl-fundamentals'
-    | '/theory/02-core-concepts'
     | '/theory/02-scene-graph'
     | '/theory/03-buffer-geometry'
     | '/theory/04-materials-shaders'
@@ -407,7 +396,6 @@ export interface FileRouteTypes {
     | '/lesson/15-post-processing'
     | '/theory/01-intro'
     | '/theory/01-webgl-fundamentals'
-    | '/theory/02-core-concepts'
     | '/theory/02-scene-graph'
     | '/theory/03-buffer-geometry'
     | '/theory/04-materials-shaders'
@@ -442,7 +430,6 @@ export interface RootRouteChildren {
   Lesson15PostProcessingRoute: typeof Lesson15PostProcessingRoute
   Theory01IntroRoute: typeof Theory01IntroRoute
   Theory01WebglFundamentalsRoute: typeof Theory01WebglFundamentalsRoute
-  Theory02CoreConceptsRoute: typeof Theory02CoreConceptsRoute
   Theory02SceneGraphRoute: typeof Theory02SceneGraphRoute
   Theory03BufferGeometryRoute: typeof Theory03BufferGeometryRoute
   Theory04MaterialsShadersRoute: typeof Theory04MaterialsShadersRoute
@@ -520,13 +507,6 @@ declare module '@tanstack/react-router' {
       path: '/theory/02-scene-graph'
       fullPath: '/theory/02-scene-graph'
       preLoaderRoute: typeof Theory02SceneGraphRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/theory/02-core-concepts': {
-      id: '/theory/02-core-concepts'
-      path: '/theory/02-core-concepts'
-      fullPath: '/theory/02-core-concepts'
-      preLoaderRoute: typeof Theory02CoreConceptsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/theory/01-webgl-fundamentals': {
@@ -752,7 +732,6 @@ const rootRouteChildren: RootRouteChildren = {
   Lesson15PostProcessingRoute: Lesson15PostProcessingRoute,
   Theory01IntroRoute: Theory01IntroRoute,
   Theory01WebglFundamentalsRoute: Theory01WebglFundamentalsRoute,
-  Theory02CoreConceptsRoute: Theory02CoreConceptsRoute,
   Theory02SceneGraphRoute: Theory02SceneGraphRoute,
   Theory03BufferGeometryRoute: Theory03BufferGeometryRoute,
   Theory04MaterialsShadersRoute: Theory04MaterialsShadersRoute,

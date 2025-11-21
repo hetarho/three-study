@@ -1,130 +1,158 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { TheoryLayout } from '~/components/TheoryLayout'
-import { CodeBlock } from '~/components/CodeBlock'
+import { createFileRoute } from "@tanstack/react-router";
+import { TheoryLayout } from "~/components/TheoryLayout";
+import { CodeBlock } from "~/components/CodeBlock";
 
-export const Route = createFileRoute('/theory/02-scene-graph')({
+export const Route = createFileRoute("/theory/02-scene-graph")({
   component: SceneGraphTheory,
-})
+});
 
 function SceneGraphTheory() {
   return (
     <TheoryLayout
-      title="02. 씬 그래프와 행렬 (Scene Graph & Matrices)"
+      title="02. 행렬 수학과 씬 그래프 (Matrix Internals)"
       prevLink="/theory/01-webgl-fundamentals"
       nextLink="/theory/03-buffer-geometry"
     >
       <p>
-        3D 프로그램에서 물체들이 어떻게 배치되고 움직이는지 이해하려면 <strong>씬 그래프(Scene Graph)</strong>와 <strong>행렬(Matrix)</strong>의 개념이 필수적입니다.
+        Three.js의 씬 그래프(Scene Graph)는 매우 편리한 기능이지만, 그 내부에는
+        선형대수학이 숨어 있습니다. <code>position</code>, <code>rotation</code>
+        , <code>scale</code> 같은 친숙한 속성들이 어떻게 GPU가 이해할 수 있는
+        행렬로 변환되는지 이해하면, 복잡한 3D 변환과 애니메이션을 자유자재로
+        다룰 수 있게 됩니다.
       </p>
 
-      <h2>씬 그래프 (Scene Graph)</h2>
+      <h2>1. 행렬의 합성 (Compose)과 분해 (Decompose)</h2>
       <p>
-        Three.js의 <code>Scene</code>은 트리(Tree) 구조로 되어 있습니다. 이를 씬 그래프라고 부릅니다.
-        모든 물체는 다른 물체의 자식(Child)이 될 수 있습니다.
+        Three.js의 <code>Object3D</code>는 <code>position</code>,{" "}
+        <code>rotation</code>, <code>scale</code>이라는 친숙한 속성을 가집니다.
+        하지만 GPU는 이 값들을 모릅니다. 오직 <strong>4x4 행렬(Matrix4)</strong>
+        만 이해합니다.
       </p>
-      
-      <ul>
-        <li><strong>부모(Parent)</strong>가 움직이면 <strong>자식(Children)</strong>도 따라 움직입니다.</li>
-        <li>자식의 위치(Position), 회전(Rotation), 크기(Scale)는 부모를 기준으로 한 <strong>상대적인 값(Local Space)</strong>입니다.</li>
-      </ul>
 
+      <h3>Compose: TRS &rarr; Matrix</h3>
+      <p>
+        렌더링 직전에 Three.js는 이 세 가지 속성을 하나의 행렬로 합칩니다. 이
+        과정을 <strong>Compose</strong>라고 하며, 순서는{" "}
+        <strong>T * R * S</strong> 입니다.
+      </p>
       <CodeBlock
-        fileName="solar_system.js"
-        code={`// 태양계 예시: 계층 구조 만들기
-const sun = new THREE.Mesh(sunGeometry, sunMaterial);
-const earth = new THREE.Mesh(earthGeometry, earthMaterial);
-const moon = new THREE.Mesh(moonGeometry, moonMaterial);
-
-// 1. 태양을 씬에 추가 (태양은 우주의 중심)
-scene.add(sun);
-
-// 2. 지구를 태양의 자식으로 추가
-// 지구의 position은 이제 태양을 기준으로 (5, 0, 0)만큼 떨어진 곳에 위치함
-earth.position.set(5, 0, 0);
-sun.add(earth);
-
-// 3. 달을 지구의 자식으로 추가
-// 달의 position은 지구를 기준으로 (1, 0, 0)만큼 떨어진 곳에 위치함
-moon.position.set(1, 0, 0);
-earth.add(moon);
-
-// 결과: 태양을 회전시키면 지구와 달이 함께 공전합니다.
-function animate() {
-  sun.rotation.y += 0.01; // 태양 자전 -> 지구 공전
-  earth.rotation.y += 0.02; // 지구 자전 -> 달 공전
+        fileName="Matrix4.js"
+        code={`// Three.js 소스 코드의 compose 메서드 (개념적)
+compose(position, quaternion, scale) {
+  // 1. Scale 행렬 생성
+  this.makeScale(scale.x, scale.y, scale.z);
+  
+  // 2. Rotation 행렬을 곱함 (Quaternion -> Rotation Matrix)
+  this.multiply(makeRotationFromQuaternion(quaternion));
+  
+  // 3. Position을 행렬의 마지막 열에 삽입 (Translation)
+  this.elements[12] = position.x;
+  this.elements[13] = position.y;
+  this.elements[14] = position.z;
+  
+  return this;
 }`}
       />
 
-      <h2>로컬 공간 vs 월드 공간 (Local vs World Space)</h2>
+      <h3>Decompose: Matrix &rarr; TRS</h3>
       <p>
-        초보자들이 가장 많이 헷갈려하는 부분입니다.
+        반대로, 이미 합쳐진 행렬에서 위치, 회전, 크기를 추출해낼 수도 있습니다.
+        물리 엔진이나 IK(Inverse Kinematics)를 구현할 때 필수적입니다.
+      </p>
+      <CodeBlock
+        fileName="decompose_usage.js"
+        code={`const matrix = new THREE.Matrix4();
+const position = new THREE.Vector3();
+const quaternion = new THREE.Quaternion();
+const scale = new THREE.Vector3();
+
+// 행렬에서 성분 추출
+matrix.decompose(position, quaternion, scale);`}
+      />
+
+      <h2>2. 오일러 회전의 비밀 (Euler Order)</h2>
+      <p>
+        <code>rotation.x</code>, <code>rotation.y</code>,{" "}
+        <code>rotation.z</code>를 사용하는 방식을{" "}
+        <strong>오일러 각(Euler Angles)</strong>이라고 합니다. 하지만 3차원
+        회전은 축을 돌리는 <strong>순서</strong>가 매우 중요합니다.
+      </p>
+      <p>
+        Three.js의 기본 순서는 <strong>XYZ</strong>입니다. 즉, X축을 먼저
+        돌리고, 그 다음 Y축, 마지막으로 Z축을 돌립니다. 이 순서에 따라 결과가
+        완전히 달라지며, 특정 각도에서 축이 겹치는{" "}
+        <strong>짐벌 락(Gimbal Lock)</strong> 현상이 발생할 수 있습니다.
+      </p>
+
+      <CodeBlock
+        fileName="EulerOrder.js"
+        code={`const object = new THREE.Mesh();
+
+// 회전 순서 변경 (예: 카메라 제어 시 YXZ가 더 자연스러울 수 있음)
+object.rotation.reorder('YXZ');
+
+object.rotation.y = Math.PI / 2; // 고개를 돌리고
+object.rotation.x = Math.PI / 4; // 위를 쳐다봄`}
+      />
+
+      <h2>3. 씬 그래프와 월드 행렬 업데이트 (updateMatrixWorld)</h2>
+      <p>
+        부모가 움직이면 자식도 따라 움직여야 합니다. 이를 위해{" "}
+        <strong>Local Matrix</strong>와 <strong>World Matrix</strong>가
+        구분됩니다.
       </p>
       <ul>
-        <li><strong>Local Position</strong>: <code>mesh.position</code>. 부모로부터 얼마나 떨어져 있는가?</li>
-        <li><strong>World Position</strong>: <code>mesh.getWorldPosition()</code>. 게임 세상의 원점(0,0,0)으로부터 실제로 어디에 있는가?</li>
+        <li>
+          <strong>
+            Local Matrix (<code>matrix</code>)
+          </strong>
+          : 부모를 기준으로 한 나의 위치/회전/크기
+        </li>
+        <li>
+          <strong>
+            World Matrix (<code>matrixWorld</code>)
+          </strong>
+          : 세상의 원점(0,0,0)을 기준으로 한 나의 절대적인 위치/회전/크기
+        </li>
       </ul>
 
-      <CodeBlock
-        fileName="world_position.js"
-        code={`const target = new THREE.Vector3();
-
-// 달의 월드 좌표 구하기
-moon.getWorldPosition(target);
-
-console.log(target); 
-// 출력: Vector3 { x: 6, y: 0, z: 0 }
-// 태양(0) + 지구거리(5) + 달거리(1) = 6`}
-      />
-
-      <h2>[Expert] 행렬 (Matrix4)과 TRS 순서</h2>
       <p>
-        컴퓨터는 위치(Translation), 회전(Rotation), 크기(Scale)를 각각 따로 계산하지 않고, 
-        <strong>4x4 행렬(Matrix4)</strong>이라는 하나의 수학적 도구로 뭉쳐서 계산합니다.
-      </p>
-      
-      <p>
-        이때 중요한 것은 <strong>순서</strong>입니다. Three.js는 기본적으로 <strong>Scale -&gt; Rotate -&gt; Translate (SRT)</strong> 순서로 행렬을 만듭니다.
-        순서가 바뀌면 완전히 다른 결과가 나옵니다.
+        매 프레임 렌더링 직전에 <code>scene.updateMatrixWorld()</code>가
+        호출되면, 재귀적으로 모든 자식들의 월드 행렬이 갱신됩니다.
       </p>
 
       <CodeBlock
-        fileName="matrix_calculation.js"
-        code={`// Three.js 내부에서의 행렬 계산 (개념적 코드)
-const matrix = new THREE.Matrix4();
+        fileName="Object3D.js"
+        code={`// Three.js 내부 로직 (재귀적 업데이트)
+updateMatrixWorld(force) {
+  if (this.matrixAutoUpdate) this.updateMatrix(); // Local Matrix 갱신
 
-// 1. 크기 변환
-matrix.makeScale(x, y, z);
-// 2. 회전 변환 (곱하기)
-matrix.multiply(new THREE.Matrix4().makeRotationFromEuler(euler));
-// 3. 위치 변환 (곱하기)
-matrix.multiply(new THREE.Matrix4().makeTranslation(x, y, z));
+  if (this.matrixWorldNeedsUpdate || force) {
+    if (this.parent === null) {
+      // 부모가 없으면 Local이 곧 World
+      this.matrixWorld.copy(this.matrix);
+    } else {
+      // 부모의 World Matrix * 나의 Local Matrix = 나의 World Matrix
+      this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix);
+    }
+    
+    this.matrixWorldNeedsUpdate = false;
+    force = true; // 자식들도 강제로 업데이트하게 만듦
+  }
 
-// 이 최종 행렬 하나만 있으면 GPU는 점을 어디로 보내야 할지 알 수 있습니다.`}
+  // 자식들에게 전파
+  const children = this.children;
+  for (let i = 0, l = children.length; i < l; i++) {
+    children[i].updateMatrixWorld(force);
+  }
+}`}
       />
 
-      <h2>[Expert] 짐벌 락(Gimbal Lock)과 쿼터니언(Quaternion)</h2>
       <p>
-        우리가 흔히 쓰는 <code>rotation.x, y, z</code>는 <strong>오일러 각(Euler Angles)</strong>이라고 합니다.
-        하지만 오일러 각에는 치명적인 약점이 있는데, 바로 <strong>짐벌 락</strong> 현상입니다.
-        특정 각도(주로 90도)에서 두 축이 겹쳐버려 한 축의 회전이 불가능해지는 현상입니다.
+        <strong>성능 팁:</strong> <code>matrixAutoUpdate = false</code>로
+        설정하면 이 모든 연산을 건너뛸 수 있습니다. 움직이지 않는 정적인
+        물체(Static Object)에는 필수적인 최적화입니다.
       </p>
-
-      <p>
-        이를 해결하기 위해 3D 그래픽스에서는 <strong>쿼터니언(Quaternion)</strong>이라는 4차원 복소수 체계를 사용합니다.
-        Three.js는 내부적으로 모든 회전을 쿼터니언으로 관리합니다.
-      </p>
-
-      <CodeBlock
-        fileName="quaternion.js"
-        code={`// 두 물체 사이를 부드럽게 회전시키기 (Slerp)
-const start = new THREE.Quaternion();
-const end = new THREE.Quaternion();
-
-// 0.5는 50% 지점을 의미
-const result = start.slerp(end, 0.5); 
-
-// 오일러 각으로는 이런 부드러운 보간(Interpolation)이 매우 어렵습니다.`}
-      />
     </TheoryLayout>
-  )
+  );
 }

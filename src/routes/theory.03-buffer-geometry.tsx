@@ -1,130 +1,119 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { TheoryLayout } from '~/components/TheoryLayout'
-import { CodeBlock } from '~/components/CodeBlock'
+import { createFileRoute } from "@tanstack/react-router";
+import { TheoryLayout } from "~/components/TheoryLayout";
+import { CodeBlock } from "~/components/CodeBlock";
 
-export const Route = createFileRoute('/theory/03-buffer-geometry')({
+export const Route = createFileRoute("/theory/03-buffer-geometry")({
   component: BufferGeometryTheory,
-})
+});
 
 function BufferGeometryTheory() {
   return (
     <TheoryLayout
-      title="03. BufferGeometry와 최적화 (BufferGeometry & Optimization)"
+      title="03. 버퍼 지오메트리와 메모리 관리 (Memory Layout)"
       prevLink="/theory/02-scene-graph"
       nextLink="/theory/04-materials-shaders"
     >
       <p>
-        Three.js의 모든 3D 물체는 결국 <strong>BufferGeometry</strong>입니다.
-        이것은 GPU 메모리에 직접 올라가는 데이터 덩어리입니다.
+        <code>BufferGeometry</code>는 이름 그대로{" "}
+        <strong>Buffer(메모리 덩어리)</strong>를 관리하는 클래스입니다. Three.js
+        성능 최적화의 90%는 이 버퍼를 얼마나 효율적으로 관리하느냐에 달려
+        있습니다.
       </p>
 
-      <h2>BufferAttribute란?</h2>
+      <h2>1. TypedArray와 VRAM</h2>
       <p>
-        점(Vertex) 하나는 여러 가지 정보를 가질 수 있습니다.
+        자바스크립트의 일반 배열(<code>Array</code>)은 유연하지만 느리고
+        메모리를 많이 차지합니다. 반면, <strong>TypedArray</strong>(
+        <code>Float32Array</code>, <code>Uint16Array</code> 등)는 C언어의
+        배열처럼 연속된 메모리 공간을 차지하며, GPU에 그대로 전송할 수 있습니다.
+      </p>
+      <p>
+        <code>BufferAttribute</code>는 이 TypedArray를 감싸고 있는 래퍼일
+        뿐입니다.
+      </p>
+
+      <h2>2. Interleaved Buffer (인터리브드 버퍼)</h2>
+      <p>
+        보통은 위치(Position), 법선(Normal), 색상(Color)을 각각 다른 버퍼에
+        담습니다. 하지만 이들을 하나의 큰 버퍼에 섞어서(Interleave) 담으면{" "}
+        <strong>캐시 적중률(Cache Hit Rate)</strong>이 올라가 성능이 향상됩니다.
+      </p>
+
+      <CodeBlock
+        fileName="InterleavedBuffer.js"
+        code={`// [x, y, z, nx, ny, nz, u, v] 순서로 반복되는 하나의 긴 배열
+const data = new Float32Array([
+  // 정점 1
+  -1.0, -1.0, 1.0,  0, 0, 1,  0, 0,
+  // 정점 2
+   1.0, -1.0, 1.0,  0, 0, 1,  1, 0,
+   // ...
+]);
+
+const interleavedBuffer = new THREE.InterleavedBuffer(data, 8); // stride = 8 floats
+
+// 하나의 버퍼를 여러 속성이 공유해서 사용
+geometry.setAttribute('position', 
+  new THREE.InterleavedBufferAttribute(interleavedBuffer, 3, 0)); // offset = 0
+
+geometry.setAttribute('normal', 
+  new THREE.InterleavedBufferAttribute(interleavedBuffer, 3, 3)); // offset = 3
+
+geometry.setAttribute('uv', 
+  new THREE.InterleavedBufferAttribute(interleavedBuffer, 2, 6)); // offset = 6`}
+      />
+
+      <h2>3. 데이터 업로드 과정 (CPU -&gt; GPU)</h2>
+      <p>
+        <code>geometry.attributes.position.needsUpdate = true</code>를 설정하면
+        어떤 일이 벌어질까요?
+      </p>
+      <ol>
+        <li>Three.js 렌더러가 변경 사항을 감지합니다.</li>
+        <li>
+          <code>gl.bindBuffer</code>로 해당 버퍼를 활성화합니다.
+        </li>
+        <li>
+          <code>gl.bufferData</code> (전체 업데이트) 또는{" "}
+          <code>gl.bufferSubData</code> (부분 업데이트)를 호출합니다.
+        </li>
+        <li>
+          이때 CPU 메모리(RAM)에서 GPU 메모리(VRAM)로 데이터 복사가 일어납니다.
+        </li>
+      </ol>
+      <p>
+        <strong>주의:</strong> 데이터 전송은 느립니다(PCIe 버스 대역폭 제한). 매
+        프레임 전체 버퍼를 업데이트하는 것은 피해야 합니다.
+      </p>
+
+      <h2>4. Frustum Culling과 Bounding Volume</h2>
+      <p>
+        GPU에게 그리기 명령을 보내기 전에, CPU는 먼저 "이 물체가 카메라 화면
+        안에 있는가?"를 검사합니다. 이를 <strong>Frustum Culling</strong>이라고
+        합니다.
+      </p>
+      <p>
+        정확한 검사를 위해 모든 점을 다 계산하는 것은 너무 느리므로, 물체를
+        감싸는 단순한 도형(Bounding Volume)을 사용합니다.
       </p>
       <ul>
-        <li><strong>position</strong>: 위치 (x, y, z)</li>
-        <li><strong>normal</strong>: 법선 벡터 (빛 반사 계산용)</li>
-        <li><strong>uv</strong>: 텍스처 좌표 (u, v)</li>
-        <li><strong>color</strong>: 정점 색상 (r, g, b)</li>
+        <li>
+          <strong>BoundingSphere</strong>: 계산이 빠름 (중심점 + 반지름).
+          회전해도 안 변함.
+        </li>
+        <li>
+          <strong>BoundingBox (AABB)</strong>: 더 정확함 (최소/최대 좌표).
+          회전하면 다시 계산해야 함.
+        </li>
       </ul>
-      <p>
-        이 각각의 정보들을 담고 있는 배열이 바로 <code>BufferAttribute</code>입니다.
-      </p>
 
       <CodeBlock
-        fileName="custom_triangle.js"
-        code={`// 삼각형 하나를 만드는 가장 기초적인 방법
-const geometry = new THREE.BufferGeometry();
-
-// 1. 위치 데이터 (x, y, z) * 3개 점 = 9개 숫자
-const vertices = new Float32Array([
-  -1.0, -1.0,  1.0, // 점 1
-   1.0, -1.0,  1.0, // 점 2
-   1.0,  1.0,  1.0  // 점 3
-]);
-
-// 2. BufferAttribute 생성 (3은 하나의 점이 3개의 숫자로 이루어졌다는 뜻)
-geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
-const mesh = new THREE.Mesh(geometry, material);`}
-      />
-
-      <h2>R3F에서의 선언적 사용</h2>
-      <p>
-        React Three Fiber에서는 이것을 JSX 문법으로 더 직관적으로 표현할 수 있습니다.
-      </p>
-
-      <CodeBlock
-        fileName="CustomGeometry.jsx"
-        code={`function CustomTriangle() {
-  const positions = useMemo(() => new Float32Array([
-    -1, -1, 0,
-     1, -1, 0,
-     0,  1, 0
-  ]), [])
-
-  return (
-    <mesh>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={3}
-          array={positions}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <meshBasicMaterial color="orange" />
-    </mesh>
-  )
-}`}
-      />
-
-      <h2>[Expert] 인터리브드 버퍼 (Interleaved Buffer)</h2>
-      <p>
-        보통은 위치 배열 따로, 색상 배열 따로, UV 배열 따로 만듭니다. 하지만 이것은 캐시 효율이 떨어질 수 있습니다.
-        <strong>인터리브드 버퍼</strong>는 한 점의 모든 정보를 하나의 긴 배열에 섞어서(Interleave) 저장하는 방식입니다.
-      </p>
-
-      <CodeBlock
-        fileName="interleaved_buffer.js"
-        code={`// [x, y, z, u, v, x, y, z, u, v, ...] 순서로 저장
-const data = new Float32Array([
-  -1, -1, 0,  0, 0,  // 점 1 (위치 + UV)
-   1, -1, 0,  1, 0,  // 점 2
-   0,  1, 0,  0.5, 1 // 점 3
-]);
-
-const interleavedBuffer = new THREE.InterleavedBuffer(data, 5); // 5개씩 끊어서 읽어라
-
-// 위치는 0번째부터 3개 읽어라
-geometry.setAttribute('position', new THREE.InterleavedBufferAttribute(interleavedBuffer, 3, 0));
-// UV는 3번째부터 2개 읽어라
-geometry.setAttribute('uv', new THREE.InterleavedBufferAttribute(interleavedBuffer, 2, 3));`}
-      />
-
-      <h2>[Expert] 프러스텀 컬링 (Frustum Culling)과 Bounding Volume</h2>
-      <p>
-        Three.js는 기본적으로 카메라 시야(Frustum) 밖에 있는 물체는 그리지 않습니다. 이를 <strong>프러스텀 컬링</strong>이라고 합니다.
-        하지만 GPU가 "이 물체가 화면 안에 있나?"를 판단하려면 계산 비용이 듭니다.
-      </p>
-      
-      <p>
-        그래서 복잡한 메쉬 대신, 그 메쉬를 감싸는 단순한 도형(<strong>Bounding Sphere</strong> 또는 <strong>Bounding Box</strong>)을 사용하여 검사합니다.
-        커스텀 지오메트리를 만들었다면 반드시 이 경계 구역을 계산해줘야 컬링이 제대로 작동합니다.
-      </p>
-
-      <CodeBlock
-        fileName="compute_bounds.js"
-        code={`// 커스텀 지오메트리 생성 후 반드시 호출해야 함
-geometry.computeBoundingBox();
+        fileName="computeBoundingSphere.js"
+        code={`// 정점 위치가 바뀌었다면 반드시 호출해야 함!
+// 그렇지 않으면 물체가 화면에 있는데도 사라지는 버그 발생
 geometry.computeBoundingSphere();
-
-// 만약 물체의 위치를 쉐이더에서만 바꾼다면(Vertex Shader Animation),
-// CPU는 물체가 움직인 걸 모르기 때문에 엉뚱하게 컬링될 수 있습니다.
-// 이럴 땐 frustumCulled를 끄거나, Bounding Sphere를 아주 크게 잡아야 합니다.
-mesh.frustumCulled = false;`}
+geometry.computeBoundingBox();`}
       />
     </TheoryLayout>
-  )
+  );
 }
